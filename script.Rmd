@@ -193,8 +193,8 @@ $$\text{credibility} = \begin{cases}
   1, & \text{se } \pi \in \left[\bar{\pi}^\min, \bar{\pi}^\max \right]\\
   
   \dfrac{1}{exp(\pi^e - \bar{\pi^{\max}}) - (\pi^e - \bar{\pi}^{\max})}, & \text{se } \pi^e>\bar{\pi}^{\max}
-  \end{cases}
-$$
+  \end{cases}$$
+
 ```{r}
 database <- rbind(data_brazil, data_canada) %>% 
     mutate(
