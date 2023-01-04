@@ -2,7 +2,13 @@
 title: "Índice de Credibilidade para Bancos Centrais"
 author: "Victor Alves"
 date: "2023-01-02"
-output: pdf_document
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
 ---
 
 # Carregando pacotes
@@ -178,26 +184,85 @@ data_argentina <- right_join(argentina_target, argentina_forecast, by = 'year') 
 
 
 ## Dados para o Chile
+
+Para as expectativas de inflação do Chile, foram adotados os dados presentes em [Encuesta de Expectativas Económicas](https://www.bcentral.cl/web/banco-central/areas/encuestas-economicas).
+
+```{r}
+chile_forecast <- readxl::read_xlsx('Dados/chile_forecast.xlsx',
+                                        skip = 3) %>% 
+  filter(...1 %not_in% c('En el mes', 'El próximo mes', 'En 23 meses (var. 12 meses)',
+                         'En 35 meses (var. 12 meses)', 'En 11 meses (var. 12 meses)'))
+
+chile_forecast <- chile_forecast[-c(20:109, 1),]
+
+chile_forecast <- chile_forecast %>% 
+  pivot_longer(cols = -...1,
+               names_to = 'month_year',
+               values_to = 'expectative') %>% 
+  rename(reference_date = ...1) %>% 
+  filter(expectative != '.') %>% 
+  separate(month_year, into = c('month', 'year'), sep = -4) %>% 
+  separate(reference_date, into = c('reference_month', 'reference_year'), sep = ' ') %>% 
+  mutate(
+    current = case_when(reference_year == year ~ 1,
+                        TRUE ~ 0),
+    month = case_when(month == 'Enero' ~ '01-01',
+                      month == 'Febrero' ~ '02-01',
+                      month == 'Marzo' ~ '03-01',
+                      month == 'Abril' ~ '04-01',
+                      month == 'Mayo' ~ '05-01',
+                      month == 'Junio' ~ '06-01',
+                      month == 'Julio' ~ '07-01',
+                      month == 'Agosto' ~ '08-01',
+                      month == 'Septiembre' ~ '09-01',
+                      month == 'Octubre' ~ '10-01',
+                      month == 'Noviembre' ~ '11-01',
+                      month == 'Diciembre' ~ '12-01',
+                      TRUE ~ month)) %>%
+  filter(current == 1) %>% 
+  mutate(date = lubridate::as_date(paste(year, month, sep='-'), format = '%Y-%m-%d'),
+         expectative = as.numeric(expectative)) %>%
+  select(-c(current, reference_year, reference_month, month))
+```
+
+
+```{r}
+chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011', '2013', '2014', 
+                                '2015', '2016', '2017', '2018', '2019', '2020', '2021', 
+                                '2022', '2023', '2024'), 
+                           current = c(NA, NA, NA, NA, NA, 3, 3,
+                                       3, 3, 3, 3, 3, 3, 3,
+                                       3, 3, 3),
+                           superior = c(NA, NA, NA, NA, NA, 4, 4,
+                                       4, 4, 4, 4, 4, 4, 4,
+                                       4, 4, 4),
+                           inferior = c(NA, NA, NA, NA, NA, 2, 2,
+                                       2, 2, 2, 2, 2, 2, 2,
+                                       2, 2, 2))
+```
+
+```{r}
+data_chile <- right_join(chile_target, chile_forecast, by = 'year') %>% 
+  select(-c(year)) %>% 
+  mutate(country = 'Chile', 
+         regime = 'interval')
+```
+
 ## Dados para o Peru
 # Base de dados final
 
 Para o cálculo do índice de credibilidade foi utilizado o índice sugerido por [Levieuge, Lucotte, Ringuedé (2015)](https://econpapers.repec.org/paper/nbpnbpmis/209.htm).\\
-Sendo assim, assumindo que valores abaixo da meta (ou intervalo da meta) geram perda de credibilidade. O índice é construído tendo como condição o fato de o Banco Central ter um regime com meta ou com intervalo de meta. Deste modo, sendo \pi^e a inflação esperada, \bar{\pi} a inflação meta e \pi^{\min} \pi^{\max} os limites do intervalo da meta.
+Sendo assim, assumindo que valores abaixo da meta (ou intervalo da meta) geram perda de credibilidade. O índice é construído tendo como condição o fato de o Banco Central ter um regime com meta ou com intervalo de meta. Deste modo, sendo $\pi^e$ a inflação esperada, $\bar{\pi}$ a inflação meta e $\pi^{\min} \pi^{\max}$ os limites do intervalo da meta.\\
 
 * Caso o Banco Central tenha um valor fixo de inflação meta:
 
-$$\text{credibility} = \dfrac{1}{exp(\pi^e - \bar{\pi}) - (\pi^e - \bar{\pi})}$$
+$\text{credibility} = \dfrac{1}{exp(\pi^e - \bar{\pi}) - (\pi^e - \bar{\pi})}$\\
 * Caso o Banco Central tenha um valor em intervalo de inflação meta:
 
-$$\text{credibility} = \begin{cases}
-  \dfrac{1}{exp(\pi^e - \bar{\pi^{\min}}) - (\pi^e - \bar{\pi}^{\min})}, & \text{se } \pi^e<\bar{\pi}^{\min}\\
-  1, & \text{se } \pi \in \left[\bar{\pi}^\min, \bar{\pi}^\max \right]\\
-  
-  \dfrac{1}{exp(\pi^e - \bar{\pi^{\max}}) - (\pi^e - \bar{\pi}^{\max})}, & \text{se } \pi^e>\bar{\pi}^{\max}
-  \end{cases}$$
+$\text{credibility} = \begin{cases} \dfrac{1}{exp(\pi^e - \bar{\pi^{\min}}) - (\pi^e - \bar{\pi}^{\min})}, & \text{se } \pi^e<\bar{\pi}^{\min}\\ 1, & \text{se } \pi \in \left[\bar{\pi}^\min, \bar{\pi}^\max \right]\\ \dfrac{1}{exp(\pi^e - \bar{\pi^{\max}}) - (\pi^e - \bar{\pi}^{\max})}, & \text{se } \pi^e>\bar{\pi}^{\max} \end{cases}$\\
 
 ```{r}
-database <- rbind(data_brazil, data_canada, data_argentina) %>% 
+database <- rbind(data_brazil, data_canada, data_argentina, data_chile) %>% 
     mutate(
     current = as.numeric(current),
     credibility = case_when(
