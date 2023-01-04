@@ -58,7 +58,7 @@ brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>%
 
 Para obtenção das expectativas do mercado, foi utilizada uma função do pacote ‘rbcb’ para obter um dataframe para o relatório FOCUS.\\
 Em primeiro momento se tomará apenas a inflação corrente para o ano seguinte. Tendo também como objetivo para expansão o cálculo com base na inflação esperada para os anos seguintes, se buscará outras funções para obtenção destes dados.\\
-O dataframe ainda possui um erro importante. Para os anos em que o FOCUS saiu muito próximo do dia 31/12, a função de conversão de semanas para dia/mês/ano está inserindo NA. Para isso, se cria uma data fictícia para indexar os valores a cada semana.
+O dataframe ainda possui um erro importante. Para os anos em que o FOCUS saiu muito próximo do dia 31/12, a função de conversão de semanas para dia/mês/ano está inserindo NA. Como forma de contornar este problema, será assumido que a data não existente é o último dia do ano.
 
 ```{r}
 # inflação esperada do Brasil 
@@ -71,7 +71,8 @@ brazil_forecast <- get_annual_market_expectations('IPCA') %>%
   filter(current == 1) %>% 
   group_by(week, year, reference_date) %>% 
   summarise(median = median(median)) %>% 
-  mutate(date = ymd(paste0(year,"-01-01")) + week)
+  mutate(date = as.Date(paste(year, week, 1, sep='-'), '%Y-%U-%u'),
+         date = replace_na(date, as.Date(paste(year, 12, 31, sep = '-')))) 
 ```
 
 Com base nesta função, pode-se obter os dados para as expecatitvas do ano seguinte.
@@ -150,7 +151,7 @@ data_canada <- right_join(canada_target, canada_forecast, by = 'date') %>%
                       quarter == 'Q4' ~ '01/12',
                       TRUE ~ quarter),
     country = 'Canada',
-    regime = 'target') %>% 
+    regime = 'interval') %>% 
   unite(date, month, year, sep = "/") %>% 
   select(-c(quarter)) %>% 
   mutate(date = as_date(date, format = '%d/%m/%Y'))
@@ -198,7 +199,7 @@ database <- rbind(data_brazil, data_canada) %>%
     current = as.numeric(current),
     credibility = case_when(
       regime == 'interval' & expectative < inferior ~ 1/(exp(expectative - inferior) - (expectative - inferior)),
-      regime == 'interval' & expectative > inferior & expectative < superior ~ 1,
+      regime == 'interval' & expectative >= inferior & expectative <= superior ~ 1,
       regime == 'interval' & expectative > superior ~ 1/(exp(expectative - superior) - (expectative - superior)),
       regime == 'target' ~ 1/(exp(expectative - current) - (expectative - current)) 
     )
