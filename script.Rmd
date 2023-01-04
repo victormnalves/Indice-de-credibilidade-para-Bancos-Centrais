@@ -88,7 +88,7 @@ data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>%
          current = meta) %>% 
   mutate(country = 'Brasil', 
          regime = 'interval',
-         date = as_date(date, format = '%Y-%m-%d'))
+         date = lubridate::as_date(date, format = '%Y-%m-%d'))
 ```
 
 
@@ -133,7 +133,7 @@ data_canada <- right_join(canada_target, canada_forecast, by = 'date') %>%
     regime = 'interval') %>% 
   unite(date, month, year, sep = "/") %>% 
   select(-c(quarter)) %>% 
-  mutate(date = as_date(date, format = '%d/%m/%Y')) %>% 
+  mutate(date = lubridate::as_date(date, format = '%d/%m/%Y')) %>% 
   drop_na()
 ```
 
