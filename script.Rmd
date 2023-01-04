@@ -30,7 +30,6 @@ Para obtenção dos dados de inflação meta para o Brasil, foram utilzadas as i
 
 ```{r}
 # inflação meta
-
 brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>% 
   select(-c(Norma, Data, 
             `Tamanho do intervalo +/- (p.p.)`, `Inflação efetiva (Variação do IPCA, %)`)) %>% 
@@ -74,32 +73,6 @@ brazil_forecast <- get_annual_market_expectations('IPCA') %>%
   mutate(date = as.Date(paste(year, week, 1, sep='-'), '%Y-%U-%u'),
          date = replace_na(date, as.Date(paste(year, 12, 31, sep = '-')))) 
 ```
-
-Com base nesta função, pode-se obter os dados para as expecatitvas do ano seguinte.
-
-```{r}
-brazil_forecast_12_months <- get_market_expectations(type = "inflation-12-months") %>% 
-  filter(Indicador == "IPCA",
-         Suavizada == "S") %>% 
-  select(-c(Minimo:numeroRespondentes)) %>% 
-  mutate(Data = as_date(Data, format = '%Y-%m-%d'),
-         Ano = format(Data, '%Y'),
-         Mes = format(Data, '%m')) 
-```
-
-
-Essa outra função também serveria para coletar os dados do FOCUS e com maior precisão. Entretanto, ela está desatualizada.
-
-```{r, message=FALSE}
-brazil_forecast_complete <- get_institutions_market_expectations(indic = 'IPCA') %>% 
-  filter(periodicity == "Anual") %>% 
-  mutate(week = week(ymd(date)), 
-         year = year(ymd(date)),
-         reference_year = year(ymd(reference_date))) %>%  
-  group_by(week, year, reference_year) %>% 
-  summarise(median = median(value))
-```
-
 
 ```{r}
 data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>% 
@@ -154,15 +127,20 @@ data_canada <- right_join(canada_target, canada_forecast, by = 'date') %>%
     regime = 'interval') %>% 
   unite(date, month, year, sep = "/") %>% 
   select(-c(quarter)) %>% 
-  mutate(date = as_date(date, format = '%d/%m/%Y'))
+  mutate(date = as_date(date, format = '%d/%m/%Y')) %>% 
+  drop_na()
 ```
 
 ## Dados para a Argentina
+
+Os dados para as expectativas de mercado foram obtidos com base no no [Relevamiento de Expectativas de Mercado (REM)](https://www.bcra.gob.ar/publicacionesestadisticas/relevamiento_expectativas_de_mercado.asp).\\
+A base aqui criada, contará somente com a inflação esperada para o ano corrente, sendo que na base original pode-se obter os valores para anos seguintes. Sendo assim, serão buscadas formas de também se considerar estes valores futuramente para o cálculo de um índice com base neles.\\
 
 ```{r}
 argentina_forecast <- readxl::read_xlsx('Dados/argentina_forecast.xlsx', 
                                         sheet = 2,
                                         skip = 1) %>% 
+  select(-c(Promedio:`Cantidad de participantes`)) %>% 
   filter(Variable == 'Precios minoristas (IPC nivel general; INDEC)',
          Referencia %in% c('var. % i.a.; dic-16', 'var. % i.a.; dic-17', 
                            'var. % i.a.; dic-18', 'var. % i.a.; dic-19',
@@ -170,9 +148,34 @@ argentina_forecast <- readxl::read_xlsx('Dados/argentina_forecast.xlsx',
                            'var. % i.a.; dic-22', 'var. % i.a.; dic-23',
                            'var. % i.a.; dic-24'),
          Período %in% c('2016', '2017', '2018', '2019',
-                        '2020', '2021', '2022', '2023', '2024'))
-  
+                        '2020', '2021', '2022', '2023', '2024')) %>% 
+  select(-c(Variable, Referencia)) %>% 
+  rename(date = `Fecha de pronóstico`,
+         reference_date = Período,
+         expectative = Mediana) %>% 
+  mutate(year = year(ymd(date)),
+         current = case_when(year == reference_date ~ 1, 
+                             TRUE ~ 0)) %>%
+  filter(current == 1) %>% 
+  select(-c(current, reference_date))
 ```
+
+Infelizmente não há uma base unificada para o regime de metas de inflação para a Argetina. Portanto, será criado manualmente um dataframe com base nos dados presentes em [Monetary Policy](https://www.bcra.gob.ar/PoliticaMonetaria/Politica_Monetaria_i.asp). Futuramente se buscará uma forma automatizada de se coletar estes dados.
+
+```{r}
+argentina_target <- tibble(year = c(2019, 2020, 2021, 2022, 2023, 2024), 
+                           current = c(17, 13, 9, 5, 5, 5),
+                           superior = c(NA, NA, NA, NA, NA, NA),
+                           inferior = c(NA, NA, NA, NA, NA, NA))
+```
+
+```{r}
+data_argentina <- right_join(argentina_target, argentina_forecast, by = 'year') %>% 
+  select(-year) %>% 
+  mutate(country = 'Argentina', 
+         regime = 'target')
+```
+
 
 ## Dados para o Chile
 ## Dados para o Peru
@@ -194,7 +197,7 @@ $$\text{credibility} = \begin{cases}
   \end{cases}$$
 
 ```{r}
-database <- rbind(data_brazil, data_canada) %>% 
+database <- rbind(data_brazil, data_canada, data_argentina) %>% 
     mutate(
     current = as.numeric(current),
     credibility = case_when(
@@ -204,8 +207,6 @@ database <- rbind(data_brazil, data_canada) %>%
       regime == 'target' ~ 1/(exp(expectative - current) - (expectative - current)) 
     )
   )
-
-
 ```
 
 ```{r}
