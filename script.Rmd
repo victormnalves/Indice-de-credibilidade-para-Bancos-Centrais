@@ -71,10 +71,7 @@ brazil_forecast <- get_annual_market_expectations('IPCA') %>%
   filter(current == 1) %>% 
   group_by(week, year, reference_date) %>% 
   summarise(median = median(median)) %>% 
-  mutate(date = as.Date(paste(year, week, 1, sep="-"), "%Y-%U-%u")) %>% 
-  drop_na()
-
-
+  mutate(date = ymd(paste0(year,"-01-01")) + week)
 ```
 
 Com base nesta função, pode-se obter os dados para as expecatitvas do ano seguinte.
