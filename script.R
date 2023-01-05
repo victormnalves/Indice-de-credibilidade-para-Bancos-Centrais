@@ -244,7 +244,6 @@ database %>%
   geom_line(aes(date, credibility)) +
   scale_x_date(limits = as.Date(c("2001-12-12", "2022-12-30"))) +
   labs(title = 'Índice de credibilidade do Banco Central',
-       subtitle = 'Dados semanais para o Brasil com base no boletim FOCUS',
        x = 'Data',
        y = 'Índice de credibilidade',
        caption = 'Baseado em Levieuge, Lucotte, Ringuedé (2015)',
