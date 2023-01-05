@@ -1,19 +1,3 @@
----
-title: "Índice de Credibilidade para Bancos Centrais"
-author: "Victor Alves"
-date: "2023-01-02"
-output:
-  html_document:
-    toc: yes
-    toc_depth: 2
-  pdf_document:
-    toc: yes
-    toc_depth: '2'
----
-
-# Carregando pacotes
-
-```{r, warning=FALSE, message=FALSE}
 library(rbcb) # dados para o Banco Central do Brasil
 library(tidyverse) # manipulação e visualização de dados
 library(lubridate) # manipulação de datas
@@ -21,28 +5,17 @@ library(zoo)
 library(rvest)
 library(xml2)
 library(paletteer)
-```
 
-# Limpeza de dados
-
-```{r}
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # defininindo diretório como pasta onde o arquivo está
 `%not_in%` <- purrr::negate(`%in%`) # crianção de operador para negação de pertencimento
-```
 
-## Dados para o Brasil
-
-Para obtenção dos dados de inflação meta para o Brasil, foram utilzadas as informações presentes no site [Histórico das metas para a inflação](https://www.bcb.gov.br/controleinflacao/historicometas), do BCB. Para isso, foi utilizada uma função do Excel para obtenção de tabelas via HTML. O próximo passo aqui é definir uma maneira de raspar automaticamente esta tabela via R.
-
-```{r}
-# inflação meta
 brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>% 
   select(-c(Norma, Data, 
             `Tamanho do intervalo +/- (p.p.)`, `Inflação efetiva (Variação do IPCA, %)`)) %>% 
   mutate(
     Ano = case_when(Ano == '2003*' ~ '2003',
-              Ano == '2004*' ~ '2004',
-              TRUE ~ Ano)) %>% 
+                    Ano == '2004*' ~ '2004',
+                    TRUE ~ Ano)) %>% 
   separate_rows(`Meta (%)`, `Intervalo de tolerância (%)`, convert = TRUE, sep = '\n') %>% 
   separate( 
     col = `Intervalo de tolerância (%)`, 
@@ -59,14 +32,6 @@ brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>%
          superior = as.numeric(superior),
          year = as.numeric(year))
 
-```
-
-Para obtenção das expectativas do mercado, foi utilizada uma função do pacote ‘rbcb’ para obter um dataframe para o relatório FOCUS.\\
-Em primeiro momento se tomará apenas a inflação corrente para o ano seguinte. Tendo também como objetivo para expansão o cálculo com base na inflação esperada para os anos seguintes, se buscará outras funções para obtenção destes dados.\\
-O dataframe ainda possui um erro importante. Para os anos em que o FOCUS saiu muito próximo do dia 31/12, a função de conversão de semanas para dia/mês/ano está inserindo NA. Como forma de contornar este problema, será assumido que a data não existente é o último dia do ano.
-
-```{r}
-# inflação esperada do Brasil 
 brazil_forecast <- get_annual_market_expectations('IPCA') %>% 
   filter(base == 0) %>% 
   mutate(week = week(ymd(date)), 
@@ -78,9 +43,7 @@ brazil_forecast <- get_annual_market_expectations('IPCA') %>%
   summarise(median = median(median)) %>% 
   mutate(date = as.Date(paste(year, week, 1, sep='-'), '%Y-%U-%u'),
          date = replace_na(date, as.Date(paste(year, 12, 31, sep = '-')))) 
-```
 
-```{r}
 data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>% 
   select(-c(year, week, reference_date)) %>% 
   rename(date = date,
@@ -89,15 +52,7 @@ data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>%
   mutate(country = 'Brasil', 
          regime = 'interval',
          date = lubridate::as_date(date, format = '%Y-%m-%d'))
-```
 
-
-## Dados para o Canadá
-
-Os dados para a inflação meta do Canadá foram obtidos com base no site [Inflation-Control Target](https://www.bankofcanada.ca/rates/indicators/key-variables/inflation-control-target/).
-
-```{r}
-# inflação meta
 canada_target <- read.csv('Dados/canada_target.csv', 
                           skip = 19) %>% 
   rename(inferior = STATIC_ATABLE_CPILL,
@@ -105,14 +60,7 @@ canada_target <- read.csv('Dados/canada_target.csv',
          current = STATIC_ATABLE_V41690973) %>% 
   mutate(date = as.yearqtr(date,
                            format = "%Y-%m-%d"))
-```
 
-
-Os dados para a inflação esperada do Canadá foram obtidos com base no site [Expectations: Definitions, Graphs and Data](https://www.bankofcanada.ca/rates/indicators/capacity-and-inflation-pressures/expectations/). Esses dados precisarão ser revistos dado que há alguns sinais de erros para ele.\\
-Em primeiro momento, o cálculo das expectativas via o survey disponível pelo Bank of Canada impede o cálculo do índice para o ano corrente, dado que as expectativas são feitas para um período de 2 a 3 anos.
-
-```{r}
-# inflação esperada
 canada_forecast <- read.csv('Dados/canada_forecast.csv', 
                             skip = 27, na.strings = "") %>% 
   select(date, INDINF_EXPECTTWOTHREE_Q) %>% 
@@ -121,9 +69,7 @@ canada_forecast <- read.csv('Dados/canada_forecast.csv',
          year = year(date),
          reference_date = year + 2) %>% 
   rename(expectative = INDINF_EXPECTTWOTHREE_Q)
-```
 
-```{r}
 data_canada <- right_join(canada_target, canada_forecast, by = 'date') %>% 
   separate(date, into = c('year', 'quarter'), sep = ' ') %>% 
   mutate(
@@ -138,14 +84,7 @@ data_canada <- right_join(canada_target, canada_forecast, by = 'date') %>%
   select(-c(quarter, reference_date)) %>% 
   mutate(date = lubridate::as_date(date, format = '%d/%m/%Y')) %>% 
   drop_na()
-```
 
-## Dados para a Argentina
-
-Os dados para as expectativas de mercado foram obtidos com base no no [Relevamiento de Expectativas de Mercado (REM)](https://www.bcra.gob.ar/publicacionesestadisticas/relevamiento_expectativas_de_mercado.asp).\\
-A base aqui criada, contará somente com a inflação esperada para o ano corrente, sendo que na base original pode-se obter os valores para anos seguintes. Sendo assim, serão buscadas formas de também se considerar estes valores futuramente para o cálculo de um índice com base neles.\\
-
-```{r}
 argentina_forecast <- readxl::read_xlsx('Dados/argentina_forecast.xlsx', 
                                         sheet = 2,
                                         skip = 1) %>% 
@@ -167,32 +106,19 @@ argentina_forecast <- readxl::read_xlsx('Dados/argentina_forecast.xlsx',
                              TRUE ~ 0)) %>%
   filter(current == 1) %>% 
   select(-c(current, reference_date))
-```
 
-Infelizmente não há uma base unificada para o regime de metas de inflação para a Argetina. Portanto, será criado manualmente um dataframe com base nos dados presentes em [Monetary Policy](https://www.bcra.gob.ar/PoliticaMonetaria/Politica_Monetaria_i.asp). Futuramente se buscará uma forma automatizada de se coletar estes dados.
-
-```{r}
 argentina_target <- tibble(year = c(2019, 2020, 2021, 2022, 2023, 2024), 
                            current = c(17, 13, 9, 5, 5, 5),
                            superior = c(NA, NA, NA, NA, NA, NA),
                            inferior = c(NA, NA, NA, NA, NA, NA))
-```
 
-```{r}
 data_argentina <- right_join(argentina_target, argentina_forecast, by = 'year') %>% 
   select(-year) %>% 
   mutate(country = 'Argentina', 
          regime = 'target')
-```
 
-
-## Dados para o Chile
-
-Para as expectativas de inflação do Chile, foram adotados os dados presentes em [Encuesta de Expectativas Económicas](https://www.bcentral.cl/web/banco-central/areas/encuestas-economicas).
-
-```{r}
 chile_forecast <- readxl::read_xlsx('Dados/chile_forecast.xlsx',
-                                        skip = 3) %>% 
+                                    skip = 3) %>% 
   filter(...1 %not_in% c('En el mes', 'El próximo mes', 'En 23 meses (var. 12 meses)',
                          'En 35 meses (var. 12 meses)', 'En 11 meses (var. 12 meses)'))
 
@@ -226,36 +152,25 @@ chile_forecast <- chile_forecast %>%
   mutate(date = lubridate::as_date(paste(year, month, sep='-'), format = '%Y-%m-%d'),
          expectative = as.numeric(expectative)) %>%
   select(-c(current, reference_year, reference_month, month))
-```
 
-
-```{r}
 chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011', '2013', '2014', 
                                 '2015', '2016', '2017', '2018', '2019', '2020', '2021', 
                                 '2022', '2023', '2024'), 
-                           current = c(3, 3, 3, 3, 3, 3, 3,
-                                       3, 3, 3, 3, 3, 3, 3,
-                                       3, 3, 3),
-                           superior = c(4, 4, 4, 4, 4, 4, 4,
-                                       4, 4, 4, 4, 4, 4, 4,
-                                       4, 4, 4),
-                           inferior = c(2, 2, 2, 2, 2, 2, 2,
-                                       2, 2, 2, 2, 2, 2, 2,
-                                       2, 2, 2))
-```
+                       current = c(3, 3, 3, 3, 3, 3, 3,
+                                   3, 3, 3, 3, 3, 3, 3,
+                                   3, 3, 3),
+                       superior = c(4, 4, 4, 4, 4, 4, 4,
+                                    4, 4, 4, 4, 4, 4, 4,
+                                    4, 4, 4),
+                       inferior = c(2, 2, 2, 2, 2, 2, 2,
+                                    2, 2, 2, 2, 2, 2, 2,
+                                    2, 2, 2))
 
-```{r}
 data_chile <- right_join(chile_target, chile_forecast, by = 'year') %>% 
   select(-c(year)) %>% 
   mutate(country = 'Chile', 
          regime = 'interval')
-```
 
-## Dados para o Peru
-
-Para as expectativas de inflação para o Peru foram utilizados os dados presentes em [ENCUESTA DE EXPECTATIVAS MACROECONÓMICAS](https://www.bcrp.gob.pe/estadisticas/encuesta-de-expectativas-macroeconomicas.html).
-
-```{r}
 peru_forecast <- readxl::read_xlsx('Dados/peru_forecast.xlsx', 
                                    skip = 3) %>% 
   filter(Fecha != 'de encuesta') %>% 
@@ -294,48 +209,27 @@ peru_forecast <- readxl::read_xlsx('Dados/peru_forecast.xlsx',
   filter(current == 1)  %>% 
   mutate(date = lubridate::as_date(paste(year, month, sep='-'), format = '%Y-%m-%d')) %>%
   select(-c(current, reference_year, month))
-```
 
-Os dados para a inflação meta do Peru foram obtidos manualmente em: [FREQUENTLY ASKED QUESTIONS](https://www.bcrp.gob.pe/en/frequently-asked-questions.html).
-
-```{r}
 peru_target <- tibble(year = c('2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', 
-                                '2010', '2011', '2013', '2014', '2015', '2016', '2017', 
-                                '2018', '2019', '2020', '2021', '2022', '2023', '2024'), 
-                           current = c(2.5, 2.5, 2.5, 2.5, 2.5, 2, 2, 2,
-                                       2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
-                                       2, 2, 2),
-                           superior = c(3.5, 3.5, 3.5, 3.5, 3.5, 3, 3, 3,
-                                       3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 
-                                       3, 3, 3),
-                           inferior = c(1.5, 1.5, 1.5, 1.5, 1.5, 1, 1, 1,
-                                       1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
-                                       1, 1, 1))
-```
+                               '2010', '2011', '2013', '2014', '2015', '2016', '2017', 
+                               '2018', '2019', '2020', '2021', '2022', '2023', '2024'), 
+                      current = c(2.5, 2.5, 2.5, 2.5, 2.5, 2, 2, 2,
+                                  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
+                                  2, 2, 2),
+                      superior = c(3.5, 3.5, 3.5, 3.5, 3.5, 3, 3, 3,
+                                   3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 
+                                   3, 3, 3),
+                      inferior = c(1.5, 1.5, 1.5, 1.5, 1.5, 1, 1, 1,
+                                   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
+                                   1, 1, 1))
 
-```{r}
 data_peru <- right_join(peru_target, peru_forecast, by = 'year') %>% 
   select(-c(year)) %>% 
   mutate(country = 'Peru', 
          regime = 'interval')
-```
 
-
-# Base de dados final
-
-Para o cálculo do índice de credibilidade foi utilizado o índice sugerido por [Levieuge, Lucotte, Ringuedé (2015)](https://econpapers.repec.org/paper/nbpnbpmis/209.htm).\\
-Sendo assim, assumindo que valores abaixo da meta (ou intervalo da meta) geram perda de credibilidade. O índice é construído tendo como condição o fato de o Banco Central ter um regime com meta ou com intervalo de meta. Deste modo, sendo $\pi^e$ a inflação esperada, $\bar{\pi}$ a inflação meta e $\pi^{\min} \pi^{\max}$ os limites do intervalo da meta.\\
-
-* Caso o Banco Central tenha um valor fixo de inflação meta:
-
-$\text{credibility} = \dfrac{1}{exp(\pi^e - \bar{\pi}) - (\pi^e - \bar{\pi})}$\\
-* Caso o Banco Central tenha um valor em intervalo de inflação meta:
-
-$\text{credibility} = \begin{cases} \dfrac{1}{exp(\pi^e - \bar{\pi^{\min}}) - (\pi^e - \bar{\pi}^{\min})}, & \text{se } \pi^e<\bar{\pi}^{\min}\\ 1, & \text{se } \pi \in \left[\bar{\pi}^\min, \bar{\pi}^\max \right]\\ \dfrac{1}{exp(\pi^e - \bar{\pi^{\max}}) - (\pi^e - \bar{\pi}^{\max})}, & \text{se } \pi^e>\bar{\pi}^{\max} \end{cases}$\\
-
-```{r}
 database <- rbind(data_brazil, data_canada, data_argentina, data_chile, data_peru) %>% 
-    mutate(
+  mutate(
     current = as.numeric(current),
     credibility = case_when(
       regime == 'interval' & expectative < inferior ~ 1/(exp(expectative - inferior) - (expectative - inferior)),
@@ -344,9 +238,7 @@ database <- rbind(data_brazil, data_canada, data_argentina, data_chile, data_per
       regime == 'target' ~ 1/(exp(expectative - current) - (expectative - current)) 
     )
   )
-```
 
-```{r}
 database %>% 
   ggplot() + 
   geom_line(aes(date, credibility)) +
@@ -366,4 +258,3 @@ database %>%
     legend.title = element_text(size = 10)) +
   scale_color_grey() +
   facet_wrap(vars(country), ncol = 2)
-```
