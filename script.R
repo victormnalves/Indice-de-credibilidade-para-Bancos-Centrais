@@ -153,18 +153,18 @@ chile_forecast <- chile_forecast %>%
          expectative = as.numeric(expectative)) %>%
   select(-c(current, reference_year, reference_month, month))
 
-chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011', '2013', '2014', 
+chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011','2012', '2013', '2014', 
                                 '2015', '2016', '2017', '2018', '2019', '2020', '2021', 
                                 '2022', '2023', '2024'), 
                        current = c(3, 3, 3, 3, 3, 3, 3,
                                    3, 3, 3, 3, 3, 3, 3,
-                                   3, 3, 3),
+                                   3, 3, 3, 3),
                        superior = c(4, 4, 4, 4, 4, 4, 4,
                                     4, 4, 4, 4, 4, 4, 4,
-                                    4, 4, 4),
+                                    4, 4, 4, 4),
                        inferior = c(2, 2, 2, 2, 2, 2, 2,
                                     2, 2, 2, 2, 2, 2, 2,
-                                    2, 2, 2))
+                                    2, 2, 2, 2))
 
 data_chile <- right_join(chile_target, chile_forecast, by = 'year') %>% 
   select(-c(year)) %>% 
