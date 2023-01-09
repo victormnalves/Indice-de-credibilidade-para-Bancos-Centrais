@@ -227,7 +227,49 @@ data_peru <- right_join(peru_target, peru_forecast, by = 'year') %>%
   mutate(country = 'Peru', 
          regime = 'interval')
 
-database <- rbind(data_brazil, data_canada, data_argentina, data_chile, data_peru) %>% 
+uruguay_forecast <- readxl::read_xls('Dados/uruguay_forecast.xls',
+                                     skip = 9) %>% 
+  select(`Fecha encuesta`, 
+         c(`4. Pronóstico de inflación anual para el año calendario corriente`:...21)) %>%
+  mutate(`Fecha encuesta` = case_when(`Fecha encuesta` == 'Set-05' ~ '38596', # reposição de valor string por número respectivo à contagem de data
+                                      TRUE ~ `Fecha encuesta`),
+         date = as.numeric(`Fecha encuesta`), 
+         date = as.Date(date, origin = "1899-12-30"), # quando se converte de data para número, o Excel tem como dia origem essa data
+         ...18 = as.numeric(...18)) %>% 
+  select(c(date, 
+           ...18)) %>% 
+  rename(expectative = ...18) %>% 
+  slice(4:n())
+
+uruguay_target <- tibble(
+  date = seq(ymd('2004-11-01'), ymd('2022-12-01'), by = 'months')
+) %>% 
+  mutate(
+    superior = case_when(
+      date >= '2022-09-01' ~ 6,
+      date >= '2014-07-01' & date <= '2022-08-01' ~ 7,
+      date >= '2011-07-01' & date <= '2014-07-01' ~ 6,
+      date >= '2008-01-01' & date <= '2014-06-01' ~ 7,
+      date >= '2007-01-01' & date <= '2007-12-01' ~ 6.5 # finalizar 2004 - 2006
+    ),
+    inferior = case_when(
+      date >= '2022-09-01' ~ 3,
+      date >= '2014-07-01' & date <= '2022-08-01' ~ 3,
+      date >= '2011-07-01' & date <= '2014-07-01' ~ 4,
+      date >= '2008-01-01' & date <= '2014-06-01' ~ 3,
+      date >= '2007-01-01' & date <= '2007-12-01' ~ 4.5 # finalizar 2004 - 2006
+    ),
+    current = NA
+  )
+
+
+data_uruguay <- right_join(uruguay_target, uruguay_forecast, by = 'date') %>% 
+  mutate(country = 'Uruguai', 
+         regime = 'interval')
+
+
+database <- rbind(data_brazil, data_canada, data_argentina, 
+                  data_chile, data_peru, data_uruguay) %>% 
   mutate(
     current = as.numeric(current),
     credibility = case_when(
