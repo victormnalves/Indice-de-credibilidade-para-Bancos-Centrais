@@ -34,18 +34,17 @@ brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>%
 
 brazil_forecast <- get_annual_market_expectations('IPCA') %>% 
   filter(base == 0) %>% 
-  mutate(week = week(ymd(date)), 
+  mutate(month = month(ymd(date)), 
          year = year(ymd(date)),
          current = case_when(year == reference_date ~ 1, 
                              TRUE ~ 0)) %>%
   filter(current == 1) %>% 
-  group_by(week, year, reference_date) %>% 
+  group_by(month, year, reference_date) %>% 
   summarise(median = median(median)) %>% 
-  mutate(date = as.Date(paste(year, week, 1, sep='-'), '%Y-%U-%u'),
-         date = replace_na(date, as.Date(paste(year, 12, 31, sep = '-')))) 
+  mutate(date = as.Date(paste(year, month, 1, sep='-'), '%Y-%m-%d')) 
 
 data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>% 
-  select(-c(year, week, reference_date)) %>% 
+  select(-c(year, month, reference_date)) %>% 
   rename(date = date,
          expectative = median,
          current = meta) %>% 
