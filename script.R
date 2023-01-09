@@ -267,9 +267,36 @@ data_uruguay <- right_join(uruguay_target, uruguay_forecast, by = 'date') %>%
   mutate(country = 'Uruguai', 
          regime = 'interval')
 
+mexico_forecast <- rbind(
+  read.csv(unzip('Dados/mexico_forecast.zip', 'mexico_forecast1.csv'), 
+           fileEncoding="latin1"),
+  read.csv(unzip('Dados/mexico_forecast.zip', 'mexico_forecast2.csv'), 
+           fileEncoding="latin1")) %>% 
+  filter(NombreRelativoLargo == 'Inflación general al cierre del año en curso (año t)') %>% 
+  mutate(month = month(ymd(FechaEncuesta)), 
+         year = year(ymd(FechaEncuesta))) %>%
+  group_by(month, year) %>% 
+  summarise(expectative = median(Dato)) %>% 
+  mutate(date = as.Date(paste(year, month, 1, sep='-'), '%Y-%m-%d')) %>% 
+  select(-c(month, year))
+
+mexico_target <- tibble(
+  date = seq(ymd('2003-01-01'), ymd('2022-12-01'), by = 'months')
+) %>% 
+  mutate(
+    superior = 4,
+    inferior = 2,
+    current = 3
+  )
+
+data_mexico <- right_join(mexico_target, mexico_forecast, by = 'date') %>% 
+  select(-month) %>% 
+  mutate(country = 'Mexico', 
+         regime = 'interval') 
+
 
 database <- rbind(data_brazil, data_canada, data_argentina, 
-                  data_chile, data_peru, data_uruguay) %>% 
+                  data_chile, data_peru, data_uruguay, data_mexico) %>% 
   mutate(
     current = as.numeric(current),
     credibility = case_when(
