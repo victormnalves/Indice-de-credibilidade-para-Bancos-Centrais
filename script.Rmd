@@ -371,6 +371,8 @@ data_uruguay <- right_join(uruguay_target, uruguay_forecast, by = 'date') %>%
 
 ## Dados Mexico
 
+[Encuestas sobre las expectativas de los especialistas en economía del sector privado](https://www.banxico.org.mx/publicaciones-y-prensa/encuestas-sobre-las-expectativas-de-los-especialis/encuestas-expectativas-del-se.html)
+
 ```{r}
 mexico_forecast <- rbind(
   read.csv(unzip('Dados/mexico_forecast.zip', 'mexico_forecast1.csv'), 
@@ -385,6 +387,7 @@ mexico_forecast <- rbind(
   mutate(date = as.Date(paste(year, month, 1, sep='-'), '%Y-%m-%d')) %>% 
   select(-c(month, year))
 ```
+[Informes trimestrales](https://www.banxico.org.mx/publicaciones-y-prensa/informes-trimestrales/informes-trimestrales-precios.html)
 
 ```{r}
 mexico_target <- tibble(
@@ -405,6 +408,51 @@ data_mexico <- right_join(mexico_target, mexico_forecast, by = 'date') %>%
 
 ```
 
+## Dados Colombia
+
+[Encuesta mensual de expectativas de analistas económicos (EME)](https://www.banrep.gov.co/es/estadisticas/encuesta-mensual-expectativas-analistas-economicos)
+
+```{r}
+colombia_forecast <- readxl::read_xls('Dados/colombia_forecast.xls') %>% 
+  select(c(...1, `EXPECTATIVAS DE INFLACIÓN PARA DICIEMBRE PRESENTE AÑO`, 
+           ...7, ...8)) %>% 
+  janitor::row_to_names(1) %>% 
+  select(FECHA, MEDIANA) %>% 
+  rename(date = FECHA,
+         expectative = MEDIANA) %>% 
+  mutate(date = as.Date(as.numeric(date), origin = "1899-12-30"),
+         yearmonth = format_ISO8601(date, precision = "ym"),
+         expectative = 100*as.numeric(expectative))
+```
+
+[Colombia's inflation targeting strategy](https://www.banrep.gov.co/en/monetary-policy)
+
+```{r}
+colombia_target <- readxl::read_xlsx('Dados/colombia_target.xlsx',
+                                     skip = 7) %>% 
+  drop_na() %>% 
+  rename(date = `Año(aaaa)-Mes(mm)`,
+         upper = `Límite superior`,
+         lower = `Límite inferior`,
+         current = `Meta de inflación`) %>% 
+  select(-`Inflación total 1`) %>% 
+  mutate(date = as.Date(paste(as.character(round(as.numeric(date))), 
+                              '01', 
+                              sep = ''), 
+                        "%Y%m%d"),
+         yearmonth = format_ISO8601(date, precision = "ym"))
+```
+
+
+```{r}
+data_colombia <- right_join(colombia_target, colombia_forecast, by = 'yearmonth') %>% 
+  select(-c(date.x, date.y)) %>% 
+  rename(date = yearmonth) %>% 
+  mutate(country = 'Colombia', 
+         regime = 'interval',
+         date = as.Date(paste(date, '01', sep = '-'), "%Y-%m-%d")) 
+```
+
 
 # Base de dados final
 
@@ -420,7 +468,7 @@ $\text{credibility} = \begin{cases} \dfrac{1}{exp(\pi^e - \bar{\pi^{\min}}) - (\
 
 ```{r}
 database <- rbind(data_brazil, data_canada, data_argentina, 
-                  data_chile, data_peru, data_uruguay, data_mexico) %>% 
+                  data_chile, data_peru, data_uruguay, data_mexico, data_colombia) %>% 
     mutate(
     current = as.numeric(current),
     credibility = case_when(

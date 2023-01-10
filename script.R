@@ -19,17 +19,17 @@ brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>%
   separate_rows(`Meta (%)`, `Intervalo de tolerância (%)`, convert = TRUE, sep = '\n') %>% 
   separate( 
     col = `Intervalo de tolerância (%)`, 
-    into = c('inferior', 'superior'), 
+    into = c('lower', 'upper'), 
     sep = '-' 
   ) %>% 
   rename(meta = `Meta (%)`,
          year = Ano) %>% 
   mutate(meta = str_replace(meta, ",", "."),
-         inferior = str_replace(inferior, ",", "."),
-         superior = str_replace(superior, ",", ".")) %>% 
+         lower = str_replace(lower, ",", "."),
+         upper = str_replace(upper, ",", ".")) %>% 
   mutate(meta = iconv(meta, 'utf-8', 'ascii', sub=''),
-         inferior = as.numeric(inferior),
-         superior = as.numeric(superior),
+         lower = as.numeric(lower),
+         upper = as.numeric(upper),
          year = as.numeric(year))
 
 brazil_forecast <- get_annual_market_expectations('IPCA') %>% 
@@ -54,8 +54,8 @@ data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>%
 
 canada_target <- read.csv('Dados/canada_target.csv', 
                           skip = 19) %>% 
-  rename(inferior = STATIC_ATABLE_CPILL,
-         superior = STATIC_ATABLE_CPIHL,
+  rename(lower = STATIC_ATABLE_CPILL,
+         upper = STATIC_ATABLE_CPIHL,
          current = STATIC_ATABLE_V41690973) %>% 
   mutate(date = as.yearqtr(date,
                            format = "%Y-%m-%d"))
@@ -108,8 +108,8 @@ argentina_forecast <- readxl::read_xlsx('Dados/argentina_forecast.xlsx',
 
 argentina_target <- tibble(year = c(2019, 2020, 2021, 2022, 2023, 2024), 
                            current = c(17, 13, 9, 5, 5, 5),
-                           superior = c(NA, NA, NA, NA, NA, NA),
-                           inferior = c(NA, NA, NA, NA, NA, NA))
+                           upper = c(NA, NA, NA, NA, NA, NA),
+                           lower = c(NA, NA, NA, NA, NA, NA))
 
 data_argentina <- right_join(argentina_target, argentina_forecast, by = 'year') %>% 
   select(-year) %>% 
@@ -158,10 +158,10 @@ chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011','2012', '
                        current = c(3, 3, 3, 3, 3, 3, 3,
                                    3, 3, 3, 3, 3, 3, 3,
                                    3, 3, 3, 3),
-                       superior = c(4, 4, 4, 4, 4, 4, 4,
+                       upper = c(4, 4, 4, 4, 4, 4, 4,
                                     4, 4, 4, 4, 4, 4, 4,
                                     4, 4, 4, 4),
-                       inferior = c(2, 2, 2, 2, 2, 2, 2,
+                       lower = c(2, 2, 2, 2, 2, 2, 2,
                                     2, 2, 2, 2, 2, 2, 2,
                                     2, 2, 2, 2))
 
@@ -215,10 +215,10 @@ peru_target <- tibble(year = c('2002', '2003', '2004', '2005', '2006', '2007', '
                       current = c(2.5, 2.5, 2.5, 2.5, 2.5, 2, 2, 2,
                                   2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
                                   2, 2, 2, 2),
-                      superior = c(3.5, 3.5, 3.5, 3.5, 3.5, 3, 3, 3,
+                      upper = c(3.5, 3.5, 3.5, 3.5, 3.5, 3, 3, 3,
                                    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 
                                    3, 3, 3, 3),
-                      inferior = c(1.5, 1.5, 1.5, 1.5, 1.5, 1, 1, 1,
+                      lower = c(1.5, 1.5, 1.5, 1.5, 1.5, 1, 1, 1,
                                    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
                                    1, 1, 1, 1))
 data_peru <- right_join(peru_target, peru_forecast, by = 'year') %>% 
@@ -244,14 +244,14 @@ uruguay_target <- tibble(
   date = seq(ymd('2004-11-01'), ymd('2022-12-01'), by = 'months')
 ) %>% 
   mutate(
-    superior = case_when(
+    upper = case_when(
       date >= '2022-09-01' ~ 6,
       date >= '2014-07-01' & date <= '2022-08-01' ~ 7,
       date >= '2011-07-01' & date <= '2014-07-01' ~ 6,
       date >= '2008-01-01' & date <= '2014-06-01' ~ 7,
       date >= '2007-01-01' & date <= '2007-12-01' ~ 6.5 # finalizar 2004 - 2006
     ),
-    inferior = case_when(
+    lower = case_when(
       date >= '2022-09-01' ~ 3,
       date >= '2014-07-01' & date <= '2022-08-01' ~ 3,
       date >= '2011-07-01' & date <= '2014-07-01' ~ 4,
@@ -283,8 +283,8 @@ mexico_target <- tibble(
   date = seq(ymd('2003-01-01'), ymd('2022-12-01'), by = 'months')
 ) %>% 
   mutate(
-    superior = 4,
-    inferior = 2,
+    upper = 4,
+    lower = 2,
     current = 3
   )
 
@@ -293,15 +293,46 @@ data_mexico <- right_join(mexico_target, mexico_forecast, by = 'date') %>%
   mutate(country = 'Mexico', 
          regime = 'interval') 
 
+colombia_forecast <- readxl::read_xls('Dados/colombia_forecast.xls') %>% 
+  select(c(...1, `EXPECTATIVAS DE INFLACIÓN PARA DICIEMBRE PRESENTE AÑO`, 
+           ...7, ...8)) %>% 
+  janitor::row_to_names(1) %>% 
+  select(FECHA, MEDIANA) %>% 
+  rename(date = FECHA,
+         expectative = MEDIANA) %>% 
+  mutate(date = as.Date(as.numeric(date), origin = "1899-12-30"),
+         yearmonth = format_ISO8601(date, precision = "ym"),
+         expectative = 100*as.numeric(expectative))
+
+colombia_target <- readxl::read_xlsx('Dados/colombia_target.xlsx',
+                                     skip = 7) %>% 
+  drop_na() %>% 
+  rename(date = `Año(aaaa)-Mes(mm)`,
+         upper = `Límite superior`,
+         lower = `Límite inferior`,
+         current = `Meta de inflación`) %>% 
+  select(-`Inflación total 1`) %>% 
+  mutate(date = as.Date(paste(as.character(round(as.numeric(date))), 
+                              '01', 
+                              sep = ''), 
+                        "%Y%m%d"),
+         yearmonth = format_ISO8601(date, precision = "ym"))
+
+data_colombia <- right_join(colombia_target, colombia_forecast, by = 'yearmonth') %>% 
+  select(-c(date.x, date.y)) %>% 
+  rename(date = yearmonth) %>% 
+  mutate(country = 'Colombia', 
+         regime = 'interval',
+         date = as.Date(paste(date, '01', sep = '-'), "%Y-%m-%d")) 
 
 database <- rbind(data_brazil, data_canada, data_argentina, 
-                  data_chile, data_peru, data_uruguay, data_mexico) %>% 
+                  data_chile, data_peru, data_uruguay, data_mexico, data_colombia) %>% 
   mutate(
     current = as.numeric(current),
     credibility = case_when(
-      regime == 'interval' & expectative < inferior ~ 1/(exp(expectative - inferior) - (expectative - inferior)),
-      regime == 'interval' & expectative >= inferior & expectative <= superior ~ 1,
-      regime == 'interval' & expectative > superior ~ 1/(exp(expectative - superior) - (expectative - superior)),
+      regime == 'interval' & expectative < lower ~ 1/(exp(expectative - lower) - (expectative - lower)),
+      regime == 'interval' & expectative >= lower & expectative <= upper ~ 1,
+      regime == 'interval' & expectative > upper ~ 1/(exp(expectative - upper) - (expectative - upper)),
       regime == 'target' ~ 1/(exp(expectative - current) - (expectative - current)) 
     )
   )
