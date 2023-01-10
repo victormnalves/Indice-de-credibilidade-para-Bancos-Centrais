@@ -46,17 +46,17 @@ brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>%
   separate_rows(`Meta (%)`, `Intervalo de tolerância (%)`, convert = TRUE, sep = '\n') %>% 
   separate( 
     col = `Intervalo de tolerância (%)`, 
-    into = c('inferior', 'superior'), 
+    into = c('lower', 'upper'), 
     sep = '-' 
   ) %>% 
   rename(meta = `Meta (%)`,
          year = Ano) %>% 
   mutate(meta = str_replace(meta, ",", "."),
-         inferior = str_replace(inferior, ",", "."),
-         superior = str_replace(superior, ",", ".")) %>% 
+         lower = str_replace(lower, ",", "."),
+         upper = str_replace(upper, ",", ".")) %>% 
   mutate(meta = iconv(meta, 'utf-8', 'ascii', sub=''),
-         inferior = as.numeric(inferior),
-         superior = as.numeric(superior),
+         lower = as.numeric(lower),
+         upper = as.numeric(upper),
          year = as.numeric(year))
 
 ```
@@ -99,8 +99,8 @@ Os dados para a inflação meta do Canadá foram obtidos com base no site [Infla
 # inflação meta
 canada_target <- read.csv('Dados/canada_target.csv', 
                           skip = 19) %>% 
-  rename(inferior = STATIC_ATABLE_CPILL,
-         superior = STATIC_ATABLE_CPIHL,
+  rename(lower = STATIC_ATABLE_CPILL,
+         upper = STATIC_ATABLE_CPIHL,
          current = STATIC_ATABLE_V41690973) %>% 
   mutate(date = as.yearqtr(date,
                            format = "%Y-%m-%d"))
@@ -173,8 +173,8 @@ Infelizmente não há uma base unificada para o regime de metas de inflação pa
 ```{r}
 argentina_target <- tibble(year = c(2019, 2020, 2021, 2022, 2023, 2024), 
                            current = c(17, 13, 9, 5, 5, 5),
-                           superior = c(NA, NA, NA, NA, NA, NA),
-                           inferior = c(NA, NA, NA, NA, NA, NA))
+                           upper = c(NA, NA, NA, NA, NA, NA),
+                           lower = c(NA, NA, NA, NA, NA, NA))
 ```
 
 ```{r}
@@ -235,10 +235,10 @@ chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011','2012', '
                            current = c(3, 3, 3, 3, 3, 3, 3,
                                        3, 3, 3, 3, 3, 3, 3,
                                        3, 3, 3, 3),
-                           superior = c(4, 4, 4, 4, 4, 4, 4,
+                           upper = c(4, 4, 4, 4, 4, 4, 4,
                                        4, 4, 4, 4, 4, 4, 4,
                                        4, 4, 4, 4),
-                           inferior = c(2, 2, 2, 2, 2, 2, 2,
+                           lower = c(2, 2, 2, 2, 2, 2, 2,
                                        2, 2, 2, 2, 2, 2, 2,
                                        2, 2, 2, 2))
 ```
@@ -304,10 +304,10 @@ peru_target <- tibble(year = c('2002', '2003', '2004', '2005', '2006', '2007', '
                            current = c(2.5, 2.5, 2.5, 2.5, 2.5, 2, 2, 2,
                                        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 
                                        2, 2, 2, 2),
-                           superior = c(3.5, 3.5, 3.5, 3.5, 3.5, 3, 3, 3,
+                           upper = c(3.5, 3.5, 3.5, 3.5, 3.5, 3, 3, 3,
                                        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 
                                        3, 3, 3, 3),
-                           inferior = c(1.5, 1.5, 1.5, 1.5, 1.5, 1, 1, 1,
+                           lower = c(1.5, 1.5, 1.5, 1.5, 1.5, 1, 1, 1,
                                        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 
                                        1, 1, 1, 1))
 ```
@@ -345,14 +345,14 @@ uruguay_target <- tibble(
   date = seq(ymd('2004-11-01'), ymd('2022-12-01'), by = 'months')
 ) %>% 
   mutate(
-    superior = case_when(
+    upper = case_when(
       date >= '2022-09-01' ~ 6,
       date >= '2014-07-01' & date <= '2022-08-01' ~ 7,
       date >= '2011-07-01' & date <= '2014-07-01' ~ 6,
       date >= '2008-01-01' & date <= '2014-06-01' ~ 7,
       date >= '2007-01-01' & date <= '2007-12-01' ~ 6.5 # finalizar 2004 - 2006
     ),
-    inferior = case_when(
+    lower = case_when(
       date >= '2022-09-01' ~ 3,
       date >= '2014-07-01' & date <= '2022-08-01' ~ 3,
       date >= '2011-07-01' & date <= '2014-07-01' ~ 4,
@@ -391,8 +391,8 @@ mexico_target <- tibble(
   date = seq(ymd('2003-01-01'), ymd('2022-12-01'), by = 'months')
 ) %>% 
   mutate(
-    superior = 4,
-    inferior = 2,
+    upper = 4,
+    lower = 2,
     current = 3
   )
 ```
@@ -424,9 +424,9 @@ database <- rbind(data_brazil, data_canada, data_argentina,
     mutate(
     current = as.numeric(current),
     credibility = case_when(
-      regime == 'interval' & expectative < inferior ~ 1/(exp(expectative - inferior) - (expectative - inferior)),
-      regime == 'interval' & expectative >= inferior & expectative <= superior ~ 1,
-      regime == 'interval' & expectative > superior ~ 1/(exp(expectative - superior) - (expectative - superior)),
+      regime == 'interval' & expectative < lower ~ 1/(exp(expectative - lower) - (expectative - lower)),
+      regime == 'interval' & expectative >= lower & expectative <= upper ~ 1,
+      regime == 'interval' & expectative > upper ~ 1/(exp(expectative - upper) - (expectative - upper)),
       regime == 'target' ~ 1/(exp(expectative - current) - (expectative - current)) 
     )
   )
@@ -452,3 +452,26 @@ database %>%
   scale_color_grey() +
   facet_wrap(vars(country), ncol = 2)
 ```
+
+```{r}
+database %>%
+  filter(country != 'Argentina') %>% 
+  ggplot() + 
+  geom_line(aes(date, expectative), colour = 'black') +
+  geom_line(aes(date, upper), colour = 'gray') +
+  geom_line(aes(date, lower), colour = 'gray') + 
+  scale_x_date(limits = as.Date(c("2001-12-12", "2022-12-30"))) +
+  labs(title = 'Evolução da expectativa de inflação em relação à meta',
+       x = 'Data',
+       y = 'Inflação') +
+  theme_bw() +
+  theme(
+    plot.title=element_text(size=16, face="bold", hjust = 0.5),
+    legend.text=element_text(size=10),
+    axis.text=element_text(size=10),
+    axis.title = element_text(size = 12),
+    legend.title = element_text(size = 10)) +
+  scale_color_grey() +
+  facet_wrap(vars(country), ncol = 2)
+```
+
