@@ -355,3 +355,23 @@ database %>%
     legend.title = element_text(size = 10)) +
   scale_color_grey() +
   facet_wrap(vars(country), ncol = 2)
+
+database %>%
+  filter(country != 'Argentina') %>% 
+  ggplot() + 
+  geom_line(aes(date, expectative), colour = 'black') +
+  geom_line(aes(date, upper), colour = 'gray') +
+  geom_line(aes(date, lower), colour = 'gray') + 
+  scale_x_date(limits = as.Date(c("2001-12-12", "2022-12-30"))) +
+  labs(title = 'Evolução da expectativa de inflação em relação à meta',
+       x = 'Data',
+       y = 'Inflação') +
+  theme_bw() +
+  theme(
+    plot.title=element_text(size=16, face="bold", hjust = 0.5),
+    legend.text=element_text(size=10),
+    axis.text=element_text(size=10),
+    axis.title = element_text(size = 12),
+    legend.title = element_text(size = 10)) +
+  scale_color_grey() +
+  facet_wrap(vars(country), ncol = 2)
