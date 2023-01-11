@@ -9,28 +9,42 @@ library(paletteer)
 setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # defininindo diretório como pasta onde o arquivo está
 `%not_in%` <- purrr::negate(`%in%`) # crianção de operador para negação de pertencimento
 
-brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>% 
-  select(-c(Norma, Data, 
-            `Tamanho do intervalo +/- (p.p.)`, `Inflação efetiva (Variação do IPCA, %)`)) %>% 
-  mutate(
-    Ano = case_when(Ano == '2003*' ~ '2003',
-                    Ano == '2004*' ~ '2004',
-                    TRUE ~ Ano)) %>% 
-  separate_rows(`Meta (%)`, `Intervalo de tolerância (%)`, convert = TRUE, sep = '\n') %>% 
-  separate( 
-    col = `Intervalo de tolerância (%)`, 
-    into = c('lower', 'upper'), 
-    sep = '-' 
-  ) %>% 
-  rename(meta = `Meta (%)`,
-         year = Ano) %>% 
-  mutate(meta = str_replace(meta, ",", "."),
-         lower = str_replace(lower, ",", "."),
-         upper = str_replace(upper, ",", ".")) %>% 
-  mutate(meta = iconv(meta, 'utf-8', 'ascii', sub=''),
-         lower = as.numeric(lower),
-         upper = as.numeric(upper),
-         year = as.numeric(year))
+brazil_target <- tibble(
+  date = seq(ymd('1999-07-01'), ymd('2025-12-01'), by = 'years')
+) %>% 
+  mutate(year = year(date),
+         current = 
+           case_when(
+             year == '1999' ~ 8,
+             year == '2000' ~ 6,
+             year == '2001' ~ 4,
+             year == '2002' ~ 3.5,
+             year == '2003' ~ 4,
+             year == '2004' ~ 5.5,
+             year >= '2005' & year <= '2018' ~ 4.5,
+             year == '2019' ~ 4.25,
+             year == '2020' ~ 4,
+             year == '2021' ~ 3.75,
+             year == '2022' ~ 3.5,
+             year == '2023' ~ 3.25,
+             year == '2024' ~ 3,
+             year == '2025' ~ 3
+           ),
+         upper = 
+           case_when(
+             year >= '1999' & year <= '2002' ~ current + 2,
+             year >= '2003' & year <= '2005' ~ current + 2.5,
+             year >= '2006' & year <= '2016' ~ current + 2,
+             year >= '2017' & year <= '2025' ~ current + 1.5,
+           ),
+         lower = 
+           case_when(
+             year >= '1999' & year <= '2002' ~ current - 2,
+             year >= '2003' & year <= '2005' ~ current - 2.5,
+             year >= '2006' & year <= '2016' ~ current - 2,
+             year >= '2017' & year <= '2025' ~ current - 1.5,
+           )) %>% 
+  select(-date)
 
 brazil_forecast <- get_annual_market_expectations('IPCA') %>% 
   filter(base == 0) %>% 
@@ -46,8 +60,7 @@ brazil_forecast <- get_annual_market_expectations('IPCA') %>%
 data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>% 
   select(-c(year, month, reference_date)) %>% 
   rename(date = date,
-         expectative = median,
-         current = meta) %>% 
+         expectative = median) %>% 
   mutate(country = 'Brasil', 
          regime = 'interval',
          date = lubridate::as_date(date, format = '%Y-%m-%d'))
