@@ -30,7 +30,10 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path)) # defininindo diret�
 `%not_in%` <- purrr::negate(`%in%`) # crianção de operador para negação de pertencimento
 ```
 
-## Dados para o Brasil
+## Brasil
+
+
+### Meta 
 
 Para obtenção dos dados de inflação meta para o Brasil, foram utilzadas as informações presentes no site [Histórico das metas para a inflação](https://www.bcb.gov.br/controleinflacao/historicometas), do BCB. Para isso, foi utilizada uma função do Excel para obtenção de tabelas via HTML. O próximo passo aqui é definir uma maneira de raspar automaticamente esta tabela via R.
 
@@ -60,6 +63,8 @@ brazil_target <- readxl::read_xlsx('Dados/brazil_target.xlsx') %>%
          year = as.numeric(year))
 
 ```
+
+### Expectativas 
 
 Para obtenção das expectativas do mercado, foi utilizada uma função do pacote ‘rbcb’ para obter um dataframe para o relatório FOCUS.\\
 Em primeiro momento se tomará apenas a inflação corrente para o ano seguinte. Tendo também como objetivo para expansão o cálculo com base na inflação esperada para os anos seguintes, se buscará outras funções para obtenção destes dados.\\
@@ -91,7 +96,9 @@ data_brazil <- right_join(brazil_target, brazil_forecast, by = 'year') %>%
 ```
 
 
-## Dados para o Canadá
+## Canadá
+
+### Meta
 
 Os dados para a inflação meta do Canadá foram obtidos com base no site [Inflation-Control Target](https://www.bankofcanada.ca/rates/indicators/key-variables/inflation-control-target/).
 
@@ -106,6 +113,7 @@ canada_target <- read.csv('Dados/canada_target.csv',
                            format = "%Y-%m-%d"))
 ```
 
+### Expectativas 
 
 Os dados para a inflação esperada do Canadá foram obtidos com base no site [Expectations: Definitions, Graphs and Data](https://www.bankofcanada.ca/rates/indicators/capacity-and-inflation-pressures/expectations/). Esses dados precisarão ser revistos dado que há alguns sinais de erros para ele.\\
 Em primeiro momento, o cálculo das expectativas via o survey disponível pelo Bank of Canada impede o cálculo do índice para o ano corrente, dado que as expectativas são feitas para um período de 2 a 3 anos.
@@ -139,7 +147,9 @@ data_canada <- right_join(canada_target, canada_forecast, by = 'date') %>%
   drop_na()
 ```
 
-## Dados para a Argentina
+## Argentina
+
+### Expectativas 
 
 Os dados para as expectativas de mercado foram obtidos com base no no [Relevamiento de Expectativas de Mercado (REM)](https://www.bcra.gob.ar/publicacionesestadisticas/relevamiento_expectativas_de_mercado.asp).\\
 A base aqui criada, contará somente com a inflação esperada para o ano corrente, sendo que na base original pode-se obter os valores para anos seguintes. Sendo assim, serão buscadas formas de também se considerar estes valores futuramente para o cálculo de um índice com base neles.\\
@@ -168,6 +178,8 @@ argentina_forecast <- readxl::read_xlsx('Dados/argentina_forecast.xlsx',
   select(-c(current, reference_date))
 ```
 
+### Meta
+
 Infelizmente não há uma base unificada para o regime de metas de inflação para a Argetina. Portanto, será criado manualmente um dataframe com base nos dados presentes em [Monetary Policy](https://www.bcra.gob.ar/PoliticaMonetaria/Politica_Monetaria_i.asp). Futuramente se buscará uma forma automatizada de se coletar estes dados.
 
 ```{r}
@@ -185,7 +197,9 @@ data_argentina <- right_join(argentina_target, argentina_forecast, by = 'year') 
 ```
 
 
-## Dados para o Chile
+## Chile
+
+### Expectativas 
 
 Para as expectativas de inflação do Chile, foram adotados os dados presentes em [Encuesta de Expectativas Económicas](https://www.bcentral.cl/web/banco-central/areas/encuestas-economicas).
 
@@ -226,7 +240,9 @@ chile_forecast <- chile_forecast %>%
          expectative = as.numeric(expectative)) %>%
   select(-c(current, reference_year, reference_month, month))
 ```
+### Meta
 
+[News and Publications](https://www.bcentral.cl/en/buscador?categoria=Publicaciones/Pol%C3%ADtica)
 
 ```{r}
 chile_target <- tibble(year = c('2007', '2008', '2009', '2010', '2011','2012', '2013', '2014', 
@@ -250,7 +266,9 @@ data_chile <- right_join(chile_target, chile_forecast, by = 'year') %>%
          regime = 'interval')
 ```
 
-## Dados para o Peru
+## Peru
+
+### Expectativas 
 
 Para as expectativas de inflação para o Peru foram utilizados os dados presentes em [ENCUESTA DE EXPECTATIVAS MACROECONÓMICAS](https://www.bcrp.gob.pe/estadisticas/encuesta-de-expectativas-macroeconomicas.html).
 
@@ -295,6 +313,8 @@ peru_forecast <- readxl::read_xlsx('Dados/peru_forecast.xlsx',
   select(-c(current, reference_year, month))
 ```
 
+### Meta
+
 Os dados para a inflação meta do Peru foram obtidos manualmente em: [FREQUENTLY ASKED QUESTIONS](https://www.bcrp.gob.pe/en/frequently-asked-questions.html).
 
 ```{r}
@@ -319,7 +339,9 @@ data_peru <- right_join(peru_target, peru_forecast, by = 'year') %>%
          regime = 'interval')
 ```
 
-## Dados Uruguai
+## Uruguai
+
+### Expectativas 
 
 Para obtenção das expectativas de mercado do Uruguai, foram obtidos dados presentes em [Encuesta de Expectativas de Inflación](https://www.bcu.gub.uy/Estadisticas-e-Indicadores/Paginas/Encuesta-Inflacion.aspx).
 
@@ -338,6 +360,8 @@ uruguay_forecast <- readxl::read_xls('Dados/uruguay_forecast.xls',
   rename(expectative = ...18) %>% 
   slice(4:n())
 ```
+### Meta
+
 Os dados referentes à inflação meta do Banco Central do Uruguai foram obtidos com base nos documentos presentes em [Informe de Política Monetaria](https://www.bcu.gub.uy/Politica-Economica-y-Mercados/Paginas/Reportes-de-Politica-Monetaria.aspx).
 
 ```{r}
@@ -369,7 +393,9 @@ data_uruguay <- right_join(uruguay_target, uruguay_forecast, by = 'date') %>%
          regime = 'interval')
 ```
 
-## Dados Mexico
+## Mexico
+
+### Expectativas 
 
 [Encuestas sobre las expectativas de los especialistas en economía del sector privado](https://www.banxico.org.mx/publicaciones-y-prensa/encuestas-sobre-las-expectativas-de-los-especialis/encuestas-expectativas-del-se.html)
 
@@ -387,6 +413,8 @@ mexico_forecast <- rbind(
   mutate(date = as.Date(paste(year, month, 1, sep='-'), '%Y-%m-%d')) %>% 
   select(-c(month, year))
 ```
+### Meta
+
 [Informes trimestrales](https://www.banxico.org.mx/publicaciones-y-prensa/informes-trimestrales/informes-trimestrales-precios.html)
 
 ```{r}
@@ -408,7 +436,9 @@ data_mexico <- right_join(mexico_target, mexico_forecast, by = 'date') %>%
 
 ```
 
-## Dados Colombia
+## Colombia
+
+### Expectativas 
 
 [Encuesta mensual de expectativas de analistas económicos (EME)](https://www.banrep.gov.co/es/estadisticas/encuesta-mensual-expectativas-analistas-economicos)
 
@@ -424,6 +454,7 @@ colombia_forecast <- readxl::read_xls('Dados/colombia_forecast.xls') %>%
          yearmonth = format_ISO8601(date, precision = "ym"),
          expectative = 100*as.numeric(expectative))
 ```
+### Meta 
 
 [Colombia's inflation targeting strategy](https://www.banrep.gov.co/en/monetary-policy)
 
@@ -453,6 +484,72 @@ data_colombia <- right_join(colombia_target, colombia_forecast, by = 'yearmonth'
          date = as.Date(paste(date, '01', sep = '-'), "%Y-%m-%d")) 
 ```
 
+## Paraguai
+
+### Expectativas 
+
+[Encuesta de Expectativas de Variables Económicas - EVE](https://www.bcp.gov.py/encuesta-de-expectativas-de-variables-economicas-eve-i472)
+
+```{r}
+paraguay_forecast <- readxl::read_xlsx('Dados/paraguay_forecast.xlsx',
+                                       skip = 13) %>% 
+    pivot_longer(cols = !starts_with('...'),
+               names_to = 'date',
+               values_to = 'expectative') %>% 
+  mutate(
+    reference_date = case_when(
+      ...1 %in% c('Expectativa del mes', 'Expectativa del próximo mes',
+                  'Expectativa año t', 'Expectativa año t+1',
+                  'Próximos 12 meses', 
+                  'Horizonte de Política Monetaria (próximos 24 meses)') ~ ...1),
+    variable = case_when(
+      ...1 %not_in% c('Expectativa del mes', 'Expectativa del próximo mes',
+                  'Expectativa año t', 'Expectativa año t+1',
+                  'Próximos 12 meses', 
+                  'Horizonte de Política Monetaria (próximos 24 meses)') ~ ...1)
+    ) %>% 
+  fill(variable, .direction = "downup") %>% 
+  filter(variable == 'Bloque de Inflación' & reference_date == 'Expectativa año t') %>% 
+  select(-c(...1, variable, reference_date)) %>% 
+  mutate(date = as.Date(as.numeric(date), origin = "1899-12-30"),
+         expectative = 100*expectative)
+  
+```
+### Meta 
+
+[Metas de Inflación](https://www.bcp.gov.py/metas-de-inflacion-i357)
+
+```{r}
+paraguay_target <- tibble(
+  date = seq(ymd('2011-05-01'), ymd('2022-12-01'), by = 'months')
+) %>% 
+  mutate(
+    current = case_when(
+      date >= '2017-03-01' ~ 4,
+      date >= '2014-12-01' & date <= '2017-12-01' ~ 4.5,
+      date >= '2014-01-01' & date <= '2014-11-01' ~ 5,
+      date >= '2011-05-01' & date <= '2011-12-01' ~ 5
+    ),
+    upper = case_when(
+      date >= '2017-03-01' ~ current + 2,
+      date >= '2014-12-01' & date <= '2017-12-01' ~ current + 2,
+      date >= '2014-01-01' & date <= '2014-11-01' ~ current + 2,
+      date >= '2011-05-01' & date <= '2011-12-01' ~ current + 2.5),
+    lower = case_when(
+      date >= '2017-03-01' ~ current - 2,
+      date >= '2014-12-01' & date <= '2017-12-01' ~ current - 2,
+      date >= '2014-01-01' & date <= '2014-11-01' ~ current - 2,
+      date >= '2011-05-01' & date <= '2011-12-01' ~ current - 2.5)
+  )
+```
+
+
+```{r}
+data_paraguay <- right_join(paraguay_target, paraguay_forecast, by = 'date') %>% 
+  mutate(country = 'Paraguai', 
+         regime = 'interval')
+```
+
 
 # Base de dados final
 
@@ -468,7 +565,8 @@ $\text{credibility} = \begin{cases} \dfrac{1}{exp(\pi^e - \bar{\pi^{\min}}) - (\
 
 ```{r}
 database <- rbind(data_brazil, data_canada, data_argentina, 
-                  data_chile, data_peru, data_uruguay, data_mexico, data_colombia) %>% 
+                  data_chile, data_peru, data_uruguay, data_mexico, 
+                  data_colombia, data_paraguay) %>% 
     mutate(
     current = as.numeric(current),
     credibility = case_when(

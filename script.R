@@ -325,8 +325,58 @@ data_colombia <- right_join(colombia_target, colombia_forecast, by = 'yearmonth'
          regime = 'interval',
          date = as.Date(paste(date, '01', sep = '-'), "%Y-%m-%d")) 
 
+paraguay_forecast <- readxl::read_xlsx('Dados/paraguay_forecast.xlsx',
+                                       skip = 13) %>% 
+  pivot_longer(cols = !starts_with('...'),
+               names_to = 'date',
+               values_to = 'expectative') %>% 
+  mutate(
+    reference_date = case_when(
+      ...1 %in% c('Expectativa del mes', 'Expectativa del próximo mes',
+                  'Expectativa año t', 'Expectativa año t+1',
+                  'Próximos 12 meses', 
+                  'Horizonte de Política Monetaria (próximos 24 meses)') ~ ...1),
+    variable = case_when(
+      ...1 %not_in% c('Expectativa del mes', 'Expectativa del próximo mes',
+                      'Expectativa año t', 'Expectativa año t+1',
+                      'Próximos 12 meses', 
+                      'Horizonte de Política Monetaria (próximos 24 meses)') ~ ...1)
+  ) %>% 
+  fill(variable, .direction = "downup") %>% 
+  filter(variable == 'Bloque de Inflación' & reference_date == 'Expectativa año t') %>% 
+  select(-c(...1, variable, reference_date)) %>% 
+  mutate(date = as.Date(as.numeric(date), origin = "1899-12-30"),
+         expectative = 100*expectative)
+
+paraguay_target <- tibble(
+  date = seq(ymd('2011-05-01'), ymd('2022-12-01'), by = 'months')
+) %>% 
+  mutate(
+    current = case_when(
+      date >= '2017-03-01' ~ 4,
+      date >= '2014-12-01' & date <= '2017-12-01' ~ 4.5,
+      date >= '2014-01-01' & date <= '2014-11-01' ~ 5,
+      date >= '2011-05-01' & date <= '2011-12-01' ~ 5
+    ),
+    upper = case_when(
+      date >= '2017-03-01' ~ current + 2,
+      date >= '2014-12-01' & date <= '2017-12-01' ~ current + 2,
+      date >= '2014-01-01' & date <= '2014-11-01' ~ current + 2,
+      date >= '2011-05-01' & date <= '2011-12-01' ~ current + 2.5),
+    lower = case_when(
+      date >= '2017-03-01' ~ current - 2,
+      date >= '2014-12-01' & date <= '2017-12-01' ~ current - 2,
+      date >= '2014-01-01' & date <= '2014-11-01' ~ current - 2,
+      date >= '2011-05-01' & date <= '2011-12-01' ~ current - 2.5)
+  )
+
+data_paraguay <- right_join(paraguay_target, paraguay_forecast, by = 'date') %>% 
+  mutate(country = 'Paraguai', 
+         regime = 'interval')
+
 database <- rbind(data_brazil, data_canada, data_argentina, 
-                  data_chile, data_peru, data_uruguay, data_mexico, data_colombia) %>% 
+                  data_chile, data_peru, data_uruguay, data_mexico, 
+                  data_colombia, data_paraguay) %>% 
   mutate(
     current = as.numeric(current),
     credibility = case_when(
