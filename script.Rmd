@@ -528,18 +528,18 @@ paraguay_target <- tibble(
       date >= '2017-03-01' ~ 4,
       date >= '2014-12-01' & date <= '2017-12-01' ~ 4.5,
       date >= '2014-01-01' & date <= '2014-11-01' ~ 5,
-      date >= '2011-05-01' & date <= '2011-12-01' ~ 5
+      date >= '2011-05-01' & date <= '2013-12-01' ~ 5
     ),
     upper = case_when(
       date >= '2017-03-01' ~ current + 2,
       date >= '2014-12-01' & date <= '2017-12-01' ~ current + 2,
       date >= '2014-01-01' & date <= '2014-11-01' ~ current + 2,
-      date >= '2011-05-01' & date <= '2011-12-01' ~ current + 2.5),
+      date >= '2011-05-01' & date <= '2013-12-01' ~ current + 2.5),
     lower = case_when(
       date >= '2017-03-01' ~ current - 2,
       date >= '2014-12-01' & date <= '2017-12-01' ~ current - 2,
       date >= '2014-01-01' & date <= '2014-11-01' ~ current - 2,
-      date >= '2011-05-01' & date <= '2011-12-01' ~ current - 2.5)
+      date >= '2011-05-01' & date <= '2013-12-01' ~ current - 2.5)
   )
 ```
 
